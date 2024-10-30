@@ -4,54 +4,85 @@
 
 // GLOBAL VARIABLES (to change between scenes):
 let scene = 0; 
-let sceneTimer = 0; 
+let stopped = false;  // -----> boolean to stop the animations
 
-// CLASSES CALLINGS
+// Classes and Variables (for big loop);
 let ball;
-let enemy1;
+let enemies = [];  // -----> array of enemies to have multiple attacking at the same time
+let shakeAmount = 0;
+let hurtActive = false;  // boolean for activating and desactivating the hurt animation
+let hurtTimer = 0;  
 
 
 function setup(){
 
   createCanvas(800, 800);
-  ball = new MainBall(width / 2, height / 2, 100, 100);     // -----> to initialice main character
-  enemy1 = new Enemy(random(width), random(height), 4);     // -----> enemie starts in random position in screen
-  
+  ball = new MainBall(width / 2, height / 2, 120, 120);     // -----> to initialice main character
+  spawnEnemies();   
+
 } 
 
 
-function draw(){
+function draw() {
 
-  background(255); 
+  if (stopped) {
+    background(255); 
+    ball.display();
+    return;
+  }
 
-  // comments: variables that are controlled from draw function
+  if (scene === 1 || hurtActive){
+    background(0);
+  } else {
+    background (255);
+  }
+
+  if (shakeAmount > 0){
+    translate (random(-shakeAmount, shakeAmount), random(-shakeAmount, shakeAmount));
+    shakeAmount -= 0.1;
+  }
 
   if (scene === 0) {
+    ball.lossGlow();
     ball.display();
-    enemy1.move();
-    enemy1.display();
-    checkHit(enemy1, ball);  
+    updateEnemies();
+    checkHits(); 
+  }   
 
+  // to stop everything when the glow it's almost gone
+  if (ball.glow <= 70){
+    stopped = true;
+  }
+
+  if (random(1) < 0.010){
+    triggerShake(10);
+    startHurtAnimation(30);
+  
   } else if (scene === 1) {
-    hurtAnimation(ball.x, ball.y, 200);  // -----> line lenght from ball's position
-    if (millis() - sceneTimer > 400) { // -----> time for hurt animation
-      scene = 2;
-      sceneTimer = millis();  // 
-      ball.shakeCount = 40;  // ------> time for ball shaking
+    hurtAnimation(ball.x, ball.y, 300);  // -----> line lenght from ball's position
+    if (millis() - sceneTimer > 400) {  // -----> time for hurt animation
+      scene = 2; 
+      ball.shakeCount = 40;  // -----> time for ball shaking
     }
 
   } else if (scene === 2) {
     if (ball.shakeCount > 0){
-      ball.shake(2);
+      ball.shake(2);  // -----> shake intensity 
       ball.shakeCount--;
     } else {
-      ball.display();  
-      ball.reduceGlow(0.9); // -----> reduce factor
+      ball.display();
     }  
-    ball.display();
-  }
+  }  
 
-}
+  if (hurtActive){
+    hurtAnimation(ball.x, ball.y, 300);
+    hurtTimer --;
+    if (hurtTimer <= 0) {
+      hurtActive = false;
+    }
+  }
+} 
+
 
 class MainBall {  // -----> 'main character'
 
@@ -75,16 +106,22 @@ class MainBall {  // -----> 'main character'
     ellipse(this.x, this.y, this.size);  // ----> stroke to define the ball
   }
   
-  shake(shakeAmount){  // -----> to control how strong does the ball shake
-      this.x += random(-shakeAmount, shakeAmount);
-      this.y += random(-shakeAmount, shakeAmount);
+  shake(amount){  // -----> to control how strong does the ball shake
+      this.x += random(-amount, amount);
+      this.y += random(-amount, amount);
   }
 
-  reduceGlow(reduceFactor) {  // -----> to reduce glow after each hit 
-    if (this.glow > reduceFactor*100){
-    this.glow -= reduceFactor; // ------> to slowly reduce the glow
+  lossGlow() {  
+    if (this.glow > 70){
+      this.glow -= 0.1; // ------> to slowly reduce the glow
     }
   }
+
+  recoverGlow() {  
+    if (this.glow < 70){
+      this.glow += 0.1; // ------> to slowly reduce the glow
+    }
+  }  
 }
 
 
@@ -111,28 +148,55 @@ class Enemy {  // -----> red triangles that will attack the ball
 
 }
 
-
-function checkHit(enemy, ball) {
-
-  let d = dist(enemy.x, enemy.y, ball.x, ball.y);
-
-  if (d < ball.size/2) {
-    scene = 1;  // -----> for switching to hurt animation
-    sceneTimer = millis(); // -----> Start timer
+function spawnEnemies(){
+  enemies = [];
+  for (let i = 0; i < 3; i++){
+    let angle = random(TWO_PI);
+    let x = width/2 + cos(angle)*400;
+    let y = height/2 + sin(angle)*400;
+    enemies.push(new Enemy(x, y, random(2,5)));
   }
+}
 
+function updateEnemies(){
+  for (let i = enemies.length - 1; i >= 0; i--){
+    let enemy = enemies [i];
+    enemy.move();
+    enemy.display();
+
+    if (dist(enemy.x, enemy.y, ball.x, ball.y) < ball.size/2){
+      enemies.splice(i, 1);  // to eliminate enemies when reaching the middle
+      if (enemies.length === 0){
+        spawnEnemies();
+      }
+    }
+  }
+}
+
+
+function checkHits() {
+  for (let enemy of enemies){
+    let d = dist(enemy.x, enemy.y, ball.x, ball.y);
+    if (d < ball.size/2) {
+      scene = 1;  // -----> for switching to hurt animation
+      sceneTimer = millis(); 
+    }  
+  }
+}
+
+
+function triggerShake (amount) {
+  shakeAmount = amount;
+}
+
+
+function startHurtAnimation(duration){
+  hurtActive = true;
+  hurtTimer = duration;
 }
 
 
 function hurtAnimation(centerX, centerY, intensity) {  // -----> to easily change the impact of the lines in each hit
-
-  background(0); 
-
-  // ball representation
-  noFill();
-  stroke(100);    
-  strokeWeight(2);
-  ellipse(width/2, height/2, ball.size); 
 
   // hurt representation
   stroke(255, 0, 0, 150);
@@ -145,14 +209,7 @@ function hurtAnimation(centerX, centerY, intensity) {  // -----> to easily chang
     let y2 = centerY + sin(angle) * length;
     line(centerX, centerY, x2, y2); 
   }
-
 }
-
-
-  
-
-
-
 
 
 
