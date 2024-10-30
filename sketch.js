@@ -3,9 +3,8 @@
 
 
 // GLOBAL VARIABLES (to change between scenes):
-let scene = 0; // 
-let sceneTimer = 0; // -----> timer to control transitions
-let enemyHit = false;
+let scene = 0; 
+let sceneTimer = 0; 
 
 // CLASSES CALLINGS
 let ball;
@@ -15,8 +14,8 @@ let enemy1;
 function setup(){
 
   createCanvas(800, 800);
-  ball = new MainBall(width / 2, height / 2, 80, 80);     // -----> to initialice main character
-  enemy1 = new Enemy(random(width), random(height));     // -----> enemie starts in random position in screen
+  ball = new MainBall(width / 2, height / 2, 100, 100);     // -----> to initialice main character
+  enemy1 = new Enemy(random(width), random(height), 4);     // -----> enemie starts in random position in screen
   
 } 
 
@@ -25,6 +24,8 @@ function draw(){
 
   background(255); 
 
+  // comments: variables that are controlled from draw function
+
   if (scene === 0) {
     ball.display();
     enemy1.move();
@@ -32,25 +33,25 @@ function draw(){
     checkHit(enemy1, ball);  
 
   } else if (scene === 1) {
-    hurtAnimation(ball.x, ball.y);  // -----> lines from ball's position
-
-    if (millis() - sceneTimer > 300) {
+    hurtAnimation(ball.x, ball.y, 200);  // -----> line lenght from ball's position
+    if (millis() - sceneTimer > 400) { // -----> time for hurt animation
       scene = 2;
-      sceneTimer = millis();  // -----> reset timer
+      sceneTimer = millis();  // 
+      ball.shakeCount = 40;  // ------> time for ball shaking
     }
 
   } else if (scene === 2) {
-    ball.reduceGlow();
+    if (ball.shakeCount > 0){
+      ball.shake(2);
+      ball.shakeCount--;
+    } else {
+      ball.display();  
+      ball.reduceGlow(0.9); // -----> reduce factor
+    }  
     ball.display();
   }
 
-  if (ball.glow <= 0){
-    enemy1.reset();
-    scene = 0;
-  }
-
 }
-
 
 class MainBall {  // -----> 'main character'
 
@@ -59,17 +60,10 @@ class MainBall {  // -----> 'main character'
     this.y = y;
     this.size = size;
     this.glow = glow;
+    this.shakeCount = 0;
   }
 
   display() {
-    if (this.glow > 0){
-      this.displayWithGlow();
-    }else{
-      this.displayWithoutGlow();
-    }
-  }
-
-  displayWithGlow (){
     fill(0,0,255,10); 
     noStroke(); 
     for(let i = 0; i < this.glow; i++){  // -----> glow effect
@@ -77,31 +71,29 @@ class MainBall {  // -----> 'main character'
     }
     stroke(255);   
     strokeWeight(2);
+    fill (0, 0, 255);
     ellipse(this.x, this.y, this.size);  // ----> stroke to define the ball
   }
   
-  displayWithoutGlow(){
-    fill(0,0,255);
-    stroke(255);
-    strokeWeight(2);
-    ellipse(this.x, this.y, this.size);
+  shake(shakeAmount){  // -----> to control how strong does the ball shake
+      this.x += random(-shakeAmount, shakeAmount);
+      this.y += random(-shakeAmount, shakeAmount);
   }
 
-  reduceGlow (glowLevel){  // -----> to reduce glow after each hit (TO FIX)
-    if (this.glow > 0){
-      this.glow -= 80/3; // ------> to slowly reduce the glow
+  reduceGlow(reduceFactor) {  // -----> to reduce glow after each hit 
+    if (this.glow > reduceFactor*100){
+    this.glow -= reduceFactor; // ------> to slowly reduce the glow
     }
   }
-
 }
 
 
 class Enemy {  // -----> red triangles that will attack the ball
 
-  constructor(x, y){
+  constructor(x, y, speed){  // -----> speed to change each time the class is called
     this.x = x;
     this.y = y;
-    this.speed = 3;
+    this.speed = speed;
   }
 
   move() {
@@ -117,13 +109,6 @@ class Enemy {  // -----> red triangles that will attack the ball
     triangle(this.x-60, this.y+30, this.x-60, this.y-30, this.x, this.y);
   }
 
-  reset() {
-    this.x = random(width);
-    this.y = random(height);
-    enemyHit = false;
-
-  }
-
 }
 
 
@@ -131,16 +116,15 @@ function checkHit(enemy, ball) {
 
   let d = dist(enemy.x, enemy.y, ball.x, ball.y);
 
-  if (d < ball.size/2 && !enemyHit) {
+  if (d < ball.size/2) {
     scene = 1;  // -----> for switching to hurt animation
     sceneTimer = millis(); // -----> Start timer
-    enemyHit = true;
   }
 
 }
 
 
-function hurtAnimation(centerX, centerY) { 
+function hurtAnimation(centerX, centerY, intensity) {  // -----> to easily change the impact of the lines in each hit
 
   background(0); 
 
@@ -156,7 +140,7 @@ function hurtAnimation(centerX, centerY) {
 
   for (let i = 0; i < 100; i++) {  // -----> random red lines
     let angle = random(TWO_PI); 
-    let length = random(50, 800); 
+    let length = random(50, intensity); 
     let x2 = centerX + cos(angle) * length;
     let y2 = centerY + sin(angle) * length;
     line(centerX, centerY, x2, y2); 
