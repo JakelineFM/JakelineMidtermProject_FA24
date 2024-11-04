@@ -1,3 +1,5 @@
+// Adjective: RESILIENCE 
+
 // GLOW EFFECT:
 // https://editor.p5js.org/jesse_harding/sketches/WpONQ8o6u
 
@@ -12,34 +14,43 @@ let enemies = [];  // -----> array of enemies to have multiple attacking at the 
 let shakeAmount = 0;
 let hurtActive = false;  // boolean for activating and desactivating the hurt animation
 let hurtTimer = 0;  
+let sceneTimer = 0;
 
 
 function setup(){
-
   createCanvas(800, 800);
-  ball = new MainBall(width / 2, height / 2, 120, 120);     // -----> to initialice main character
-  spawnEnemies();   
-
+  initializeSketch();  
 } 
 
 
 function draw() {
 
   if (stopped) {
-    background(255); 
+    // making the background to iluminate as the ball is recovering
+    let bgColor = map(ball.glow, 70, 120, 100, 255);
+    background(bgColor); 
+    ball.recoverGlow();
     ball.display();
+
+  if (ball.glow >= 120) {
+    initializeSketch();
+    }
     return;
-  }
+  }  
 
   if (scene === 1 || hurtActive){
-    background(0);
+    background(180);
   } else {
     background (255);
   }
-
+  
   if (shakeAmount > 0){
     translate (random(-shakeAmount, shakeAmount), random(-shakeAmount, shakeAmount));
     shakeAmount -= 0.1;
+  }
+
+  if (hurtActive || scene === 1){  // -----> move behind the ball for the elements to be seen clearer
+    hurtAnimation(ball.x, ball.y, 300);
   }
 
   if (scene === 0) {
@@ -59,7 +70,6 @@ function draw() {
     startHurtAnimation(30);
   
   } else if (scene === 1) {
-    hurtAnimation(ball.x, ball.y, 300);  // -----> line lenght from ball's position
     if (millis() - sceneTimer > 400) {  // -----> time for hurt animation
       scene = 2; 
       ball.shakeCount = 40;  // -----> time for ball shaking
@@ -75,13 +85,23 @@ function draw() {
   }  
 
   if (hurtActive){
-    hurtAnimation(ball.x, ball.y, 300);
-    hurtTimer --;
+    hurtTimer--;
     if (hurtTimer <= 0) {
       hurtActive = false;
     }
   }
 } 
+
+function initializeSketch(){
+  ball = new MainBall(width/2, height/2, 120, 120);
+  spawnEnemies ();
+  stopped = false;
+  scene = 0;
+  shakeAmount = 0;
+  hurtActive = false;
+  hurtTimer = 0;
+  sceneTimer = 0;
+}
 
 
 class MainBall {  // -----> 'main character'
@@ -113,13 +133,14 @@ class MainBall {  // -----> 'main character'
 
   lossGlow() {  
     if (this.glow > 70){
-      this.glow -= 0.1; // ------> to slowly reduce the glow
+      this.glow -= 0.07; // ------> to slowly reduce the glow
     }
   }
 
   recoverGlow() {  
-    if (this.glow < 70){
+    if (this.glow < 120){
       this.glow += 0.1; // ------> to slowly reduce the glow
+      this.size = 120 + sin(frameCount * 0.1) * 5;  // -----> pulse while recover the glow to show recovery
     }
   }  
 }
@@ -142,7 +163,7 @@ class Enemy {  // -----> red triangles that will attack the ball
 
   display() {
     noStroke();
-    fill (255, 0, 0);
+    fill (255, 100, 0);
     triangle(this.x-60, this.y+30, this.x-60, this.y-30, this.x, this.y);
   }
 
@@ -150,11 +171,12 @@ class Enemy {  // -----> red triangles that will attack the ball
 
 function spawnEnemies(){
   enemies = [];
+  let enemySpeed = random(2,5) + (120 - ball.glow) * 0.05;  // -----> faster enemies as the glow fades
   for (let i = 0; i < 3; i++){
     let angle = random(TWO_PI);
     let x = width/2 + cos(angle)*400;
     let y = height/2 + sin(angle)*400;
-    enemies.push(new Enemy(x, y, random(2,5)));
+    enemies.push(new Enemy(x, y, enemySpeed));
   }
 }
 
@@ -196,21 +218,20 @@ function startHurtAnimation(duration){
 }
 
 
-function hurtAnimation(centerX, centerY, intensity) {  // -----> to easily change the impact of the lines in each hit
+function hurtAnimation(centerX, centerY) {  
 
   // hurt representation
-  stroke(255, 0, 0, 150);
-  strokeWeight(random(0.5, 2)); 
+  stroke(255, 100, 0, 100);
+  strokeWeight(random(0.5, 5)); 
 
   for (let i = 0; i < 100; i++) {  // -----> random red lines
     let angle = random(TWO_PI); 
-    let length = random(50, intensity); 
+    let length = random(50, 350); 
     let x2 = centerX + cos(angle) * length;
     let y2 = centerY + sin(angle) * length;
     line(centerX, centerY, x2, y2); 
   }
 }
-
 
 
 
